@@ -1,0 +1,29 @@
+{
+  "name": "cepmcp",
+  "private": true,
+  "type": "module",
+  "module": "index.ts",
+  "scripts": {
+    "check": "ultracite check",
+    "fix": "ultracite fix",
+    "start:server": "bun run server.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.4",
+    "express": "^5.2.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "oxfmt": "^0.28.0",
+    "oxlint": "^1.43.0",
+    "ultracite": "7.1.4"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
