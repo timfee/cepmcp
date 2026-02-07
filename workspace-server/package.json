@@ -1,10 +1,10 @@
 {
-  "name": "workspace-server",
-  "version": "0.0.4",
-  "description": "",
-  "keywords": [],
+  "name": "cep-mcp-server",
+  "version": "0.9.0",
+  "description": "Chrome Enterprise Premium MCP Server",
+  "keywords": ["mcp", "google-workspace", "chrome-enterprise-premium", "oauth"],
   "license": "Apache-2.0",
-  "author": "Allen Hutchison",
+  "author": "Tim Feeley",
   "type": "commonjs",
   "main": "dist/index.js",
   "scripts": {

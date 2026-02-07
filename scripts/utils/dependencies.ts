@@ -4,18 +4,26 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * Dependency graph traversal utilities for the release packaging pipeline.
+ * Walks node_modules to compute the full transitive closure of dependencies
+ * for a given set of root packages.
+ */
+
 import * as fs from "node:fs";
 import * as path from "node:path";
 
+
+/**
+ * Minimal package.json shape needed for dependency resolution.
+ */
 interface PackageJson {
   dependencies?: Record<string, string>;
 }
 
+
 /**
- * Gets the direct dependencies of a package from its package.json.
- * @param rootDir - The root directory containing node_modules.
- * @param pkgName - The name of the package.
- * @returns - A list of dependency names.
+ * Reads a package's direct dependencies from its package.json in node_modules.
  */
 function getDependencies(rootDir: string, pkgName: string): string[] {
   const pkgPath = path.join(rootDir, "node_modules", pkgName, "package.json");
@@ -27,11 +35,10 @@ function getDependencies(rootDir: string, pkgName: string): string[] {
   return Object.keys(pkg.dependencies || {});
 }
 
+
 /**
- * Recursively finds all transitive dependencies for a list of packages.
- * @param rootDir - The root directory containing node_modules.
- * @param startPkgs - The list of initial packages to resolve.
- * @returns - A set of all transitive dependencies (including startPkgs).
+ * Recursively resolves all transitive dependencies starting from a list of
+ * root packages, returning the complete set including the roots themselves.
  */
 export function getTransitiveDependencies(
   rootDir: string,

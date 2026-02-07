@@ -1,7 +1,10 @@
 {
   "name": "cepmcp",
-  "version": "0.0.1",
+  "version": "0.9.0",
+  "description": "Chrome Enterprise Premium MCP Server for Google Workspace integration",
   "private": true,
+  "author": "Tim Feeley",
+  "license": "Apache-2.0",
   "workspaces": [
     "workspace-server"
   ],

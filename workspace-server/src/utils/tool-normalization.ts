@@ -4,16 +4,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * MCP tool name normalization. Monkey-patches McpServer.registerTool to
+ * convert dot-separated tool names (e.g. "auth.clear") into underscore-
+ * separated names (e.g. "auth_clear") for clients that do not support dots.
+ */
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-// Utility for normalizing tool names
+
 /**
- * Wraps the McpServer.registerTool method to normalize tool names.
- * If useDotNames is true, dots in tool names are preserved.
- * If useDotNames is false (default), dots are replaced with underscores.
- *
- * @param server The McpServer instance to modify.
- * @param useDotNames Whether to preserve dot notation in tool names.
+ * Wraps the McpServer.registerTool method so that dots in tool names are
+ * replaced with the chosen separator. Pass useDotNames=true to preserve
+ * the original dot notation.
  */
 export function applyToolNameNormalization(
   server: McpServer,
@@ -22,17 +25,12 @@ export function applyToolNameNormalization(
   const separator = useDotNames ? "." : "_";
   const originalRegisterTool = server.registerTool.bind(server);
 
-  // We use `any` for the override to match the varying signatures of registerTool
-  // while maintaining the runtime behavior we need.
-  // The original signature is roughly:
-  // registerTool(name: string, toolDef: Tool, handler: ToolHandler): void
   (
     server as unknown as {
       registerTool: (name: string, ...args: unknown[]) => unknown;
     }
   ).registerTool = (name: string, ...rest: unknown[]) => {
     const normalizedName = name.replace(/\./g, separator);
-    // Cast originalRegisterTool to accept spread arguments
     return (originalRegisterTool as (...args: unknown[]) => unknown)(
       normalizedName,
       ...rest

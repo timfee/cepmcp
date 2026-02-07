@@ -4,9 +4,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * Project root detection and well-known file paths. Walks up the directory
+ * tree from the current module to locate gemini-extension.json, then derives
+ * absolute paths for the encrypted token file and master encryption key.
+ */
+
 import * as fs from "node:fs";
 import path from "node:path";
 
+
+/**
+ * Traverses parent directories from __dirname until it finds one containing
+ * gemini-extension.json, which marks the project root.
+ */
 function findProjectRoot(): string {
   let dir = __dirname;
   while (dir !== path.dirname(dir)) {
@@ -20,12 +31,25 @@ function findProjectRoot(): string {
   );
 }
 
-// Construct an absolute path to the project root.
+
+/**
+ * Absolute path to the project root directory.
+ */
 export const PROJECT_ROOT = findProjectRoot();
+
+
+/**
+ * Absolute path to the AES-256-GCM encrypted token file.
+ */
 export const ENCRYPTED_TOKEN_PATH = path.join(
   PROJECT_ROOT,
   "gemini-cli-workspace-token.json"
 );
+
+
+/**
+ * Absolute path to the master encryption key used by FileTokenStorage.
+ */
 export const ENCRYPTION_MASTER_KEY_PATH = path.join(
   PROJECT_ROOT,
   ".gemini-cli-workspace-master-key"

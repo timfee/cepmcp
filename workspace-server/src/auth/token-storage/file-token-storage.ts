@@ -4,6 +4,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * Encrypted file-based token storage backend. Uses AES-256-GCM with a
+ * machine-specific derived key to persist credentials when the OS keychain
+ * is unavailable. The master key is auto-generated on first use and stored
+ * with restrictive file permissions.
+ */
+
 import * as crypto from "node:crypto";
 import { promises as fs } from "node:fs";
 import * as os from "node:os";
@@ -18,6 +25,12 @@ import {
 } from "../../utils/paths";
 import { BaseTokenStorage } from "./base-token-storage";
 
+
+/**
+ * Persists OAuth credentials as an AES-256-GCM encrypted JSON file. The
+ * encryption key is derived from a randomly generated master key combined
+ * with machine-specific salt (hostname + username).
+ */
 export class FileTokenStorage extends BaseTokenStorage {
   private readonly tokenFilePath: string;
   private readonly encryptionKey: Buffer;
@@ -30,11 +43,19 @@ export class FileTokenStorage extends BaseTokenStorage {
     this.encryptionKey = this.deriveEncryptionKey();
   }
 
+  /**
+   * Factory that loads (or generates) the master key before constructing
+   * the storage instance, since the constructor cannot be async.
+   */
   static async create(serviceName: string): Promise<FileTokenStorage> {
     const masterKey = await this.loadMasterKey();
     return new FileTokenStorage(serviceName, masterKey);
   }
 
+  /**
+   * Reads the master key from disk, creating a new 256-bit random key with
+   * mode 0600 if the file does not yet exist.
+   */
   private static async loadMasterKey(): Promise<Buffer> {
     try {
       const masterKey = await fs.readFile(ENCRYPTION_MASTER_KEY_PATH);
@@ -104,6 +125,10 @@ export class FileTokenStorage extends BaseTokenStorage {
     await fs.mkdir(dir, { recursive: true, mode: 0o700 });
   }
 
+  /**
+   * Reads and decrypts the token file, returning an empty map when the file
+   * is missing or corrupted rather than propagating the error.
+   */
   private async loadTokens(): Promise<Map<string, OAuthCredentials>> {
     try {
       const data = await fs.readFile(this.tokenFilePath, "utf-8");
@@ -129,6 +154,9 @@ export class FileTokenStorage extends BaseTokenStorage {
     }
   }
 
+  /**
+   * Encrypts and writes the full token map to disk with mode 0600.
+   */
   private async saveTokens(
     tokens: Map<string, OAuthCredentials>
   ): Promise<void> {
@@ -141,6 +169,9 @@ export class FileTokenStorage extends BaseTokenStorage {
     await fs.writeFile(this.tokenFilePath, encrypted, { mode: 0o600 });
   }
 
+  /**
+   * Retrieves credentials for a single server from the encrypted file.
+   */
   async getCredentials(serverName: string): Promise<OAuthCredentials | null> {
     const tokens = await this.loadTokens();
     const credentials = tokens.get(serverName);
@@ -152,6 +183,9 @@ export class FileTokenStorage extends BaseTokenStorage {
     return credentials;
   }
 
+  /**
+   * Validates, timestamps, and persists credentials into the encrypted file.
+   */
   async setCredentials(credentials: OAuthCredentials): Promise<void> {
     this.validateCredentials(credentials);
 
@@ -165,6 +199,10 @@ export class FileTokenStorage extends BaseTokenStorage {
     await this.saveTokens(tokens);
   }
 
+  /**
+   * Removes a single server's entry from the encrypted file, deleting the
+   * file entirely when no entries remain.
+   */
   async deleteCredentials(serverName: string): Promise<void> {
     const tokens = await this.loadTokens();
 
@@ -188,11 +226,17 @@ export class FileTokenStorage extends BaseTokenStorage {
     }
   }
 
+  /**
+   * Returns the names of all servers with stored credentials.
+   */
   async listServers(): Promise<string[]> {
     const tokens = await this.loadTokens();
     return Array.from(tokens.keys());
   }
 
+  /**
+   * Loads all credentials, skipping entries that fail validation.
+   */
   async getAllCredentials(): Promise<Map<string, OAuthCredentials>> {
     const tokens = await this.loadTokens();
     const result = new Map<string, OAuthCredentials>();
@@ -202,13 +246,16 @@ export class FileTokenStorage extends BaseTokenStorage {
         this.validateCredentials(credentials);
         result.set(serverName, credentials);
       } catch (error) {
-        console.error(`Skipping invalid credentials for ${serverName}:`, error);
+        console.error(`[storage] skipping invalid credentials for ${serverName}:`, error);
       }
     }
 
     return result;
   }
 
+  /**
+   * Deletes the encrypted token file, silently ignoring if it does not exist.
+   */
   async clearAll(): Promise<void> {
     try {
       await fs.unlink(this.tokenFilePath);

@@ -4,9 +4,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * Main esbuild configuration for the workspace MCP server. Bundles
+ * src/index.ts into a single minified CommonJS file targeting Node 16+,
+ * with the 'open' package aliased to our secure browser launcher wrapper.
+ */
+
 import * as esbuild from "esbuild";
 import path from "node:path";
 
+
+/**
+ * Runs the esbuild bundler with production settings and exits on failure.
+ */
 async function build() {
   try {
     await esbuild.build({
@@ -17,17 +27,13 @@ async function build() {
       outfile: "dist/index.js",
       minify: true,
       sourcemap: true,
-      // Replace 'open' package with our wrapper
       alias: {
         open: path.resolve(__dirname, "src/utils/open-wrapper.ts"),
       },
-      // External packages that shouldn't be bundled
       external: ["jsdom"],
-      // Add a loader for .node files
       loader: {
         ".node": "file",
       },
-      // Make sure CommonJS modules work properly
       format: "cjs",
       logLevel: "info",
     });
@@ -38,5 +44,6 @@ async function build() {
     process.exit(1);
   }
 }
+
 
 build();

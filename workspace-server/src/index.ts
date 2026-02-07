@@ -6,35 +6,31 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * Entry point for the Chrome Enterprise Premium MCP Server. Initializes the
+ * MCP server, registers authentication tools, and starts listening over stdio.
+ */
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
-// Dynamically import version from package.json
 import { version } from "../package.json";
 import { AuthManager } from "./auth/AuthManager";
+import { SCOPES } from "./constants";
 import { setLoggingEnabled } from "./utils/logger";
 import { applyToolNameNormalization } from "./utils/tool-normalization";
 
-const SCOPES = [
-  "https://www.googleapis.com/auth/documents",
-  "https://www.googleapis.com/auth/drive",
-  "https://www.googleapis.com/auth/calendar",
-  "https://www.googleapis.com/auth/chat.spaces",
-  "https://www.googleapis.com/auth/chat.messages",
-  "https://www.googleapis.com/auth/chat.memberships",
-  "https://www.googleapis.com/auth/userinfo.profile",
-  "https://www.googleapis.com/auth/gmail.modify",
-  "https://www.googleapis.com/auth/directory.readonly",
-  "https://www.googleapis.com/auth/presentations.readonly",
-  "https://www.googleapis.com/auth/spreadsheets.readonly",
-];
 
+/**
+ * Bootstraps the MCP server, wires up authentication, registers tools,
+ * and begins listening for incoming requests on stdio.
+ */
 async function main() {
   if (process.argv.includes("--debug")) {
     setLoggingEnabled(true);
   }
 
-  const authManager = new AuthManager(SCOPES);
+  const authManager = new AuthManager([...SCOPES]);
 
   const server = new McpServer({
     name: "google-cep-server",
@@ -48,12 +44,10 @@ async function main() {
         data: message,
       })
       .catch((err) => {
-        console.error("Failed to send logging message:", err);
+        console.error("[cep] failed to send logging message:", err);
       });
   });
 
-  // 3. Register tools directly on the server
-  // Handle tool name normalization (dots to underscores) by default, or use dots if --use-dot-names is passed.
   const useDotNames = process.argv.includes("--use-dot-names");
   const separator = useDotNames ? "." : "_";
   applyToolNameNormalization(server, useDotNames);
@@ -97,16 +91,16 @@ async function main() {
     }
   );
 
-  // 4. Connect the transport layer and start listening
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
   console.error(
-    `Google Workspace MCP Server is running (using ${separator} for tool names). Listening for requests...`
+    `[cep] server running (tool separator: "${separator}"), listening for requests...`
   );
 }
 
+
 main().catch((error) => {
-  console.error("A critical error occurred:", error);
+  console.error("[cep] critical error:", error);
   process.exit(1);
 });

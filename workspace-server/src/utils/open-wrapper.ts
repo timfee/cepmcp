@@ -5,10 +5,9 @@
  */
 
 /**
- * This module acts as a drop-in replacement for the 'open' package.
- * It intercepts browser launch requests and either:
- * 1. Opens the browser securely using our secure-browser-launcher
- * 2. Prints the URL to console if browser launch should be skipped or fails
+ * Drop-in replacement for the 'open' npm package, aliased at build time.
+ * Routes browser launch requests through our secure-browser-launcher and
+ * prints the URL to console as a fallback when the browser cannot be opened.
  */
 
 import {
@@ -16,7 +15,11 @@ import {
   shouldLaunchBrowser,
 } from "./secure-browser-launcher";
 
-// Create a mock child process object that matches what open returns
+
+/**
+ * Returns a stub ChildProcess-like object so callers that expect the 'open'
+ * package's return type continue to work without modification.
+ */
 const createMockChildProcess = () => ({
   unref: () => {
     // Mock
@@ -37,26 +40,30 @@ const createMockChildProcess = () => ({
   spawnfile: "",
 });
 
+
+/**
+ * Attempts to open a URL securely in the default browser. If the environment
+ * does not support browser launch or the launch fails, prints the URL to
+ * console instead and returns a mock child process for API compatibility.
+ */
 const openWrapper = async (url: string): Promise<unknown> => {
-  // Check if we should launch the browser
   if (!shouldLaunchBrowser()) {
     console.log(
-      `Browser launch not supported. Please open this URL in your browser: ${url}`
+      `[cep] browser launch not supported, open this URL manually: ${url}`
     );
     return createMockChildProcess();
   }
 
-  // Try to open the browser securely
   try {
     await openBrowserSecurely(url);
     return createMockChildProcess();
   } catch {
     console.log(
-      `Failed to open browser. Please open this URL in your browser: ${url}`
+      `[cep] failed to open browser, open this URL manually: ${url}`
     );
     return createMockChildProcess();
   }
 };
 
-// Use standard ES Module export and let the compiler generate the CommonJS correct output.
+
 export default openWrapper;

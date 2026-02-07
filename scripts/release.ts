@@ -4,6 +4,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * Builds a distributable tar.gz release archive containing the bundled server,
+ * native node_modules (keytar, jsdom), extension manifest, context file, and
+ * commands directory. Accepts an optional --platform flag for platform-specific
+ * archive naming.
+ */
+
 import archiver from "archiver";
 import minimist from "minimist";
 import * as fs from "node:fs";
@@ -12,8 +19,13 @@ import * as path from "node:path";
 import packageJson from "../package.json";
 import { getTransitiveDependencies } from "./utils/dependencies";
 
+
 const argv = minimist(process.argv.slice(2));
 
+
+/**
+ * Recursively deletes all files with a given extension inside a directory.
+ */
 const deleteFilesByExtension = (dir: string, ext: string) => {
   if (!fs.existsSync(dir)) {
     return;
@@ -31,15 +43,20 @@ const deleteFilesByExtension = (dir: string, ext: string) => {
   }
 };
 
+
+/**
+ * Assembles a release archive from the built dist, native dependencies,
+ * extension manifest, and supporting files.
+ */
 const main = async () => {
   const platform = argv.platform;
   if (platform && typeof platform !== "string") {
     console.error(
-      "Error: The --platform argument must be a string (e.g., --platform=linux)."
+      "[release] --platform argument must be a string (e.g., --platform=linux)"
     );
     process.exit(1);
   }
-  const baseName = "google-workspace-extension";
+  const baseName = "google-cep-extension";
   const name = platform ? `${platform}.${baseName}` : baseName;
   const extension = "tar.gz";
 
@@ -50,20 +67,16 @@ const main = async () => {
   const archiveDir = path.join(releaseDir, name);
   const workspaceMcpServerDir = path.join(rootDir, "workspace-server");
 
-  // Create the release directory
   fs.mkdirSync(releaseDir, { recursive: true });
-
-  // Create the platform-specific directory
   fs.mkdirSync(archiveDir, { recursive: true });
 
-  // Copy the dist directory
+  // Copy and clean the dist directory
   fs.cpSync(
     path.join(workspaceMcpServerDir, "dist"),
     path.join(archiveDir, "dist"),
     { recursive: true }
   );
 
-  // Clean up the dist directory
   const distDir = path.join(archiveDir, "dist");
   deleteFilesByExtension(distDir, ".d.ts");
   deleteFilesByExtension(distDir, ".map");
@@ -72,7 +85,7 @@ const main = async () => {
   fs.rmSync(path.join(distDir, "services"), { recursive: true, force: true });
   fs.rmSync(path.join(distDir, "utils"), { recursive: true, force: true });
 
-  // Copy native modules and dependencies (keytar, jsdom)
+  // Copy native modules and their transitive dependencies
   const nodeModulesDir = path.join(archiveDir, "node_modules");
   fs.mkdirSync(nodeModulesDir, { recursive: true });
 
@@ -91,13 +104,13 @@ const main = async () => {
     ""
   );
 
-  // Generate the gemini-extension.json file
+  // Generate the gemini-extension.json manifest
   const geminiExtensionJson = {
-    name: "google-workspace",
+    name: "google-cep",
     version,
     contextFileName: "WORKSPACE-Context.md",
     mcpServers: {
-      "google-workspace": {
+      "google-cep": {
         command: "node",
         args: ["dist/index.js", "--use-dot-names"],
         cwd: "${extensionPath}",
@@ -109,13 +122,11 @@ const main = async () => {
     JSON.stringify(geminiExtensionJson, null, 2)
   );
 
-  // Copy the WORKSPACE-Context.md file
   fs.copyFileSync(
     path.join(workspaceMcpServerDir, "WORKSPACE-Context.md"),
     path.join(archiveDir, "WORKSPACE-Context.md")
   );
 
-  // Copy the commands directory
   const commandsDir = path.join(rootDir, "commands");
   if (fs.existsSync(commandsDir)) {
     fs.cpSync(commandsDir, path.join(archiveDir, "commands"), {
@@ -123,22 +134,19 @@ const main = async () => {
     });
   }
 
-  // Create the archive
+  // Create the gzipped tar archive
   const output = fs.createWriteStream(path.join(releaseDir, archiveName));
   const archive = archiver("tar", {
     gzip: true,
   });
 
   const archivePromise = new Promise<void>((resolve, reject) => {
-    output.on("close", function () {
-      console.log(archive.pointer() + " total bytes");
-      console.log(
-        "archiver has been finalized and the output file descriptor has closed."
-      );
+    output.on("close", () => {
+      console.log(`[release] ✓ archive complete (${archive.pointer()} bytes)`);
       resolve();
     });
 
-    archive.on("error", function (err) {
+    archive.on("error", (err) => {
       reject(err);
     });
   });
@@ -150,7 +158,8 @@ const main = async () => {
   await archivePromise;
 };
 
+
 main().catch((err) => {
-  console.error(err);
+  console.error("[release] ✗", err);
   process.exit(1);
 });

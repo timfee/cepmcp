@@ -4,19 +4,37 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * Smart storage selector that tries the native OS keychain first and falls
+ * back to encrypted file storage when keychain is unavailable. Lazily
+ * initializes the underlying backend on first access with race-condition
+ * protection.
+ */
+
 import type { TokenStorage, OAuthCredentials } from "./types";
 
 import { BaseTokenStorage } from "./base-token-storage";
 import { FileTokenStorage } from "./file-token-storage";
 import { TokenStorageType } from "./types";
 
+
 const FORCE_FILE_STORAGE_ENV_VAR = "GEMINI_CLI_WORKSPACE_FORCE_FILE_STORAGE";
 
+
+/**
+ * Delegates all storage operations to either KeychainTokenStorage or
+ * FileTokenStorage, chosen at initialization time based on platform
+ * availability and the GEMINI_CLI_WORKSPACE_FORCE_FILE_STORAGE flag.
+ */
 export class HybridTokenStorage extends BaseTokenStorage {
   private storage: TokenStorage | null = null;
   private storageType: TokenStorageType | null = null;
   private storageInitPromise: Promise<TokenStorage> | null = null;
 
+  /**
+   * Probes keychain availability and selects the best storage backend.
+   * Falls back to encrypted file storage when keychain init fails.
+   */
   private async initializeStorage(): Promise<TokenStorage> {
     const forceFileStorage = process.env[FORCE_FILE_STORAGE_ENV_VAR] === "true";
 
@@ -33,9 +51,8 @@ export class HybridTokenStorage extends BaseTokenStorage {
           return this.storage;
         }
       } catch (e) {
-        // Fallback to file storage if keychain fails to initialize.
         console.warn(
-          "Keychain initialization failed, falling back to file storage:",
+          "[storage] keychain init failed, falling back to file storage:",
           e
         );
       }
@@ -46,50 +63,73 @@ export class HybridTokenStorage extends BaseTokenStorage {
     return this.storage;
   }
 
+  /**
+   * Returns the resolved storage backend, initializing it on first call.
+   * Uses a shared promise to prevent concurrent initialization races.
+   */
   private async getStorage(): Promise<TokenStorage> {
     if (this.storage !== null) {
       return this.storage;
     }
 
-    // Use a single initialization promise to avoid race conditions
     if (!this.storageInitPromise) {
       this.storageInitPromise = this.initializeStorage();
     }
 
-    // Wait for initialization to complete
     return await this.storageInitPromise;
   }
 
+  /**
+   * Retrieves credentials for a server from the active storage backend.
+   */
   async getCredentials(serverName: string): Promise<OAuthCredentials | null> {
     const storage = await this.getStorage();
     return storage.getCredentials(serverName);
   }
 
+  /**
+   * Persists credentials through the active storage backend.
+   */
   async setCredentials(credentials: OAuthCredentials): Promise<void> {
     const storage = await this.getStorage();
     await storage.setCredentials(credentials);
   }
 
+  /**
+   * Removes credentials for a server from the active storage backend.
+   */
   async deleteCredentials(serverName: string): Promise<void> {
     const storage = await this.getStorage();
     await storage.deleteCredentials(serverName);
   }
 
+  /**
+   * Lists all server names with stored credentials.
+   */
   async listServers(): Promise<string[]> {
     const storage = await this.getStorage();
     return storage.listServers();
   }
 
+  /**
+   * Returns all stored credentials keyed by server name.
+   */
   async getAllCredentials(): Promise<Map<string, OAuthCredentials>> {
     const storage = await this.getStorage();
     return storage.getAllCredentials();
   }
 
+  /**
+   * Removes all stored credentials from the active backend.
+   */
   async clearAll(): Promise<void> {
     const storage = await this.getStorage();
     await storage.clearAll();
   }
 
+  /**
+   * Returns which storage backend was selected after initialization.
+   */
   async getStorageType(): Promise<TokenStorageType> {
     await this.getStorage();
     return this.storageType ?? TokenStorageType.ENCRYPTED_FILE;

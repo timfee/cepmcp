@@ -4,8 +4,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * Separate esbuild configuration for the auth-utils bundle. Produces a
+ * standalone CommonJS module from oauth-credential-storage.ts, with keytar
+ * excluded as an external native dependency.
+ */
+
 import * as esbuild from "esbuild";
 
+
+/**
+ * Bundles the credential storage API into dist/auth-utils.js for use
+ * outside the main server bundle.
+ */
 async function buildAuthUtils() {
   try {
     await esbuild.build({
@@ -17,7 +28,7 @@ async function buildAuthUtils() {
       minify: true,
       sourcemap: true,
       external: [
-        "keytar", // keytar is a native module and should not be bundled
+        "keytar",
       ],
       format: "cjs",
       logLevel: "info",
@@ -29,5 +40,6 @@ async function buildAuthUtils() {
     process.exit(1);
   }
 }
+
 
 buildAuthUtils();

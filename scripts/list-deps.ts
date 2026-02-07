@@ -4,9 +4,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * Prints the full transitive dependency tree for one or more npm packages
+ * by walking node_modules. Used during release to understand which packages
+ * must be bundled alongside the server.
+ */
+
 import * as path from "node:path";
 
 import { getTransitiveDependencies } from "./utils/dependencies";
+
 
 const root = path.join(__dirname, "..");
 const targetPackages = process.argv.slice(2);
