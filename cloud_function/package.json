@@ -2,6 +2,9 @@
   "name": "oauth-handler",
   "version": "1.0.0",
   "main": "index.js",
+  "scripts": {
+    "start": "functions-framework --target=oauthHandler"
+  },
   "dependencies": {
     "@google-cloud/functions-framework": "^5.0.0",
     "@google-cloud/secret-manager": "^6.1.1",
