@@ -4,24 +4,31 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import functions from "@google-cloud/functions-framework";
-import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
-import { default as axios } from "axios";
-import { URL } from "node:url";
+// Import required packages
+const functions = require("@google-cloud/functions-framework");
+const { SecretManagerServiceClient } = require("@google-cloud/secret-manager");
+const axios = require("axios");
+const { URL } = require("node:url");
 
+// --- Configuration loaded from Environment Variables ---
+// These are set in the Google Cloud Function's configuration
 const CLIENT_ID = process.env.CLIENT_ID;
 const SECRET_NAME = process.env.SECRET_NAME;
 const REDIRECT_URI = process.env.REDIRECT_URI;
 
+// Fail fast if required environment variables are missing
 if (!CLIENT_ID || !SECRET_NAME || !REDIRECT_URI) {
   throw new Error(
     "Missing required environment variables: CLIENT_ID, SECRET_NAME, and REDIRECT_URI must be set."
   );
 }
 
+// --- Configuration for local storage (used in instructions) ---
 const KEYCHAIN_SERVICE_NAME = "gemini-cli-cep-oauth";
 const KEYCHAIN_ACCOUNT_NAME = "main-account";
+// --- END CONFIGURATION ---
 
+// Initialize the Secret Manager client
 const secretClient = new SecretManagerServiceClient();
 
 /**
@@ -32,7 +39,7 @@ async function getClientSecret() {
     const [version] = await secretClient.accessSecretVersion({
       name: SECRET_NAME,
     });
-    const payload = version?.payload?.data?.toString();
+    const payload = version.payload.data.toString("utf8");
 
     return payload;
   } catch (error) {
@@ -75,7 +82,7 @@ async function handleCallback(req, res) {
     const expiry_date = Date.now() + expires_in * 1000;
 
     // If state is present, decode it and decide whether to redirect or show manual page.
-    if (state && typeof state === "string") {
+    if (state) {
       try {
         // SECURITY: Enforce a reasonable size limit on the state parameter to prevent DoS.
         if (state.length > 4096) {
