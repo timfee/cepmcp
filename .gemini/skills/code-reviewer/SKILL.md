@@ -33,11 +33,11 @@ for both local development and remote Pull Requests.
     early. Capture the output of these commands to inform your review (e.g.,
     note any failed tests or linting errors).
     ```bash
-    bun install
-    bun run build
-    bun run test
-    bun run lint
-    bun run format:check
+    npm install
+    npm run build
+    npm run test
+    npm run lint
+    npm run format:check
     ```
 3.  **Context**: Read the PR description and any existing comments to understand
     the goal and history.

@@ -80,7 +80,7 @@ function showHelp() {
   console.log(`
 Auth Management CLI
 
-Usage: bun scripts/auth-utils.ts <command>
+Usage: node scripts/auth-utils.ts <command>
 
 Commands:
   clear     Clear all authentication credentials
@@ -89,9 +89,9 @@ Commands:
   help      Show this help message
 
 Examples:
-  bun scripts/auth-utils.ts clear
-  bun scripts/auth-utils.ts expire
-  bun scripts/auth-utils.ts status
+  node scripts/auth-utils.ts clear
+  node scripts/auth-utils.ts expire
+  node scripts/auth-utils.ts status
 `);
 }
 

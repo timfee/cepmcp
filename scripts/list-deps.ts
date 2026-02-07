@@ -12,7 +12,7 @@ const root = path.join(__dirname, "..");
 const targetPackages = process.argv.slice(2);
 
 if (targetPackages.length === 0) {
-  console.log("Usage: bun scripts/list-deps.ts <package1> [package2...]");
+  console.log("Usage: node scripts/list-deps.ts <package1> [package2...]");
   process.exit(1);
 }
 

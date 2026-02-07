@@ -19,10 +19,8 @@ import {
   saveCredentials,
 } from "./token-storage/oauth-credential-storage";
 
-// The Client ID for the OAuth flow.
-// The secret is handled by the cloud function, not in the client.
 const CLIENT_ID =
-  "338689075775-o75k922vn5fdl18qergr96rp8g63e4d7.apps.googleusercontent.com";
+  "226520923819-539vjitqbghl1uj9dv067jrd4lhcakog.apps.googleusercontent.com";
 const TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000; // 5 minutes
 
 /**

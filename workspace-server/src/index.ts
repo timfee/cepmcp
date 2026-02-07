@@ -30,16 +30,14 @@ const SCOPES = [
 ];
 
 async function main() {
-  // 1. Initialize services
   if (process.argv.includes("--debug")) {
     setLoggingEnabled(true);
   }
 
   const authManager = new AuthManager(SCOPES);
 
-  // 2. Create the server instance
   const server = new McpServer({
-    name: "google-workspace-server",
+    name: "google-cep-server",
     version,
   });
 

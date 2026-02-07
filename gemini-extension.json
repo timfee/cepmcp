@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "mcpServers": {
     "nodeServer": {
-      "command": "bun",
-      "args": ["scripts${/}start.js"],
+      "command": "ts-node",
+      "args": ["scripts${/}start.ts"],
       "cwd": "${extensionPath}"
     }
   }
