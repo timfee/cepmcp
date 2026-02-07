@@ -22,7 +22,7 @@ if (!CLIENT_ID || !SECRET_NAME || !REDIRECT_URI) {
     "Missing required environment variables: CLIENT_ID, SECRET_NAME, and REDIRECT_URI must be set."
   );
 }
-
+console.log("Hello, we're starting!");
 // --- Configuration for local storage (used in instructions) ---
 const KEYCHAIN_SERVICE_NAME = "gemini-cli-cep-oauth";
 const KEYCHAIN_ACCOUNT_NAME = "main-account";
