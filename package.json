@@ -1,5 +1,6 @@
 {
   "name": "cepmcp",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
   "module": "index.ts",
@@ -16,9 +17,16 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/archiver": "^7.0.0",
     "@types/bun": "latest",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/minimist": "^1.2.5",
+    "@types/node": "^25.2.1",
+    "archiver": "^7.0.1",
+    "google-auth-library": "^10.5.0",
+    "googleapis": "^171.4.0",
+    "minimist": "^1.2.8",
     "oxfmt": "^0.28.0",
     "oxlint": "^1.43.0",
     "ultracite": "7.1.4"
