@@ -4,11 +4,28 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+process.on("unhandledRejection", (reason, promise) => {
+  console.error(
+    "CRITICAL: Unhandled Rejection at:",
+    promise,
+    "reason:",
+    reason
+  );
+  // process.exit(1); // Optionally force non-zero exit
+});
+
+process.on("uncaughtException", (err, origin) => {
+  console.error("CRITICAL: Uncaught Exception thrown:", err, "origin:", origin);
+  process.exit(1);
+});
+
 // Import required packages
 const functions = require("@google-cloud/functions-framework");
 const { SecretManagerServiceClient } = require("@google-cloud/secret-manager");
 const axios = require("axios");
 const { URL } = require("node:url");
+
+console.log("Imports done.");
 
 // --- Configuration loaded from Environment Variables ---
 // These are set in the Google Cloud Function's configuration
