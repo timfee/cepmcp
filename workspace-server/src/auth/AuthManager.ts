@@ -233,7 +233,7 @@ export class AuthManager {
       // Call the cloud function refresh endpoint
       // The cloud function has the client secret needed for token refresh
       const response = await fetch(
-        "https://google-workspace-extension.geminicli.com/refreshToken",
+        "https://cepmcp-226520923819.europe-west1.run.app/refreshToken",
         {
           method: "POST",
           headers: {
@@ -326,7 +326,7 @@ export class AuthManager {
 
     // The redirect URI for Google's auth server is the cloud function
     const cloudFunctionRedirectUri =
-      "https://google-workspace-extension.geminicli.com";
+      "https://cepmcp-226520923819.europe-west1.run.app";
 
     const authUrl = client.generateAuthUrl({
       redirect_uri: cloudFunctionRedirectUri, // Tell Google to go to the cloud function

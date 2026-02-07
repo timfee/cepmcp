@@ -4,8 +4,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { Request, Response } from "express";
-
 import functions from "@google-cloud/functions-framework";
 import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
 import { default as axios } from "axios";
@@ -48,7 +46,7 @@ async function getClientSecret() {
  * @param {Object} req Express request object.
  * @param {Object} res Express response object.
  */
-async function handleCallback(req: Request, res: Response) {
+async function handleCallback(req, res) {
   const code = req.query.code;
   const state = req.query.state; // The state is the base64 encoded local redirect URI
 
@@ -273,7 +271,7 @@ async function handleCallback(req: Request, res: Response) {
  * @param {Object} req Express request object.
  * @param {Object} res Express response object.
  */
-async function handleRefreshToken(req: Request, res: Response) {
+async function handleRefreshToken(req, res) {
   // Only accept POST requests
   if (req.method !== "POST") {
     console.error("Invalid method for refreshToken:", req.method);
