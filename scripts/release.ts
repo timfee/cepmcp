@@ -108,7 +108,7 @@ const main = async () => {
   const geminiExtensionJson = {
     name: "google-cep",
     version,
-    contextFileName: "WORKSPACE-Context.md",
+    contextFileName: "CEP-Context.md",
     mcpServers: {
       "google-cep": {
         command: "node",
@@ -123,8 +123,8 @@ const main = async () => {
   );
 
   fs.copyFileSync(
-    path.join(workspaceMcpServerDir, "WORKSPACE-Context.md"),
-    path.join(archiveDir, "WORKSPACE-Context.md")
+    path.join(workspaceMcpServerDir, "CEP-Context.md"),
+    path.join(archiveDir, "CEP-Context.md")
   );
 
   const commandsDir = path.join(rootDir, "commands");

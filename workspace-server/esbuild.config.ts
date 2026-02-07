@@ -6,7 +6,7 @@
 
 /**
  * Main esbuild configuration for the workspace MCP server. Bundles
- * src/index.ts into a single minified CommonJS file targeting Node 16+,
+ * src/index.ts into a single minified CommonJS file targeting Node 18+,
  * with the 'open' package aliased to our secure browser launcher wrapper.
  */
 
@@ -23,7 +23,7 @@ async function build() {
       entryPoints: ["src/index.ts"],
       bundle: true,
       platform: "node",
-      target: "node16",
+      target: "node18",
       outfile: "dist/index.js",
       minify: true,
       sourcemap: true,

@@ -39,7 +39,7 @@ export const AUTH_TIMEOUT_MS = 5 * 60 * 1000;
 /**
  * Keychain service name used to store credentials in the OS keychain.
  */
-export const KEYCHAIN_SERVICE_NAME = "gemini-cli-workspace-oauth";
+export const KEYCHAIN_SERVICE_NAME = "gemini-cli-cep-oauth";
 
 
 /**

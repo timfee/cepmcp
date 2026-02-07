@@ -32,7 +32,7 @@ cepmcp/
 
 ## Prerequisites
 
-- Node.js 16+
+- Node.js 18+
 - npm 7+ (workspaces support)
 
 ## Development Setup
