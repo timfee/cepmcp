@@ -4,104 +4,44 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-console.log("[VERBOSE] Script start.");
-
-process.on("unhandledRejection", (reason, promise) => {
-  console.error(
-    "[VERBOSE] CRITICAL: Unhandled Rejection at:",
-    promise,
-    "reason:",
-    reason
-  );
-  // process.exit(1); // Optionally force non-zero exit
-});
-console.log("[VERBOSE] Unhandled Rejection handler registered.");
-
-process.on("uncaughtException", (err, origin) => {
-  console.error(
-    "[VERBOSE] CRITICAL: Uncaught Exception thrown:",
-    err,
-    "origin:",
-    origin
-  );
-  process.exit(1);
-});
-console.log("[VERBOSE] Uncaught Exception handler registered.");
-
-// Import required packages
-console.log("[VERBOSE] Importing @google-cloud/functions-framework...");
 const functions = require("@google-cloud/functions-framework");
-console.log("[VERBOSE] Imported @google-cloud/functions-framework.");
-
-console.log("[VERBOSE] Importing @google-cloud/secret-manager...");
 const { SecretManagerServiceClient } = require("@google-cloud/secret-manager");
-console.log("[VERBOSE] Imported @google-cloud/secret-manager.");
-
-console.log("[VERBOSE] Importing axios...");
 const axios = require("axios");
-console.log("[VERBOSE] Imported axios.");
-
-console.log("[VERBOSE] Importing node:url...");
 const { URL } = require("node:url");
-console.log("[VERBOSE] Imported node:url.");
-
-console.log("[VERBOSE] Imports done.");
 
 // --- Configuration loaded from Environment Variables ---
-console.log("[VERBOSE] Loading environment variables...");
+// These are set in the Google Cloud Function's configuration
 const CLIENT_ID = process.env.CLIENT_ID;
 const SECRET_NAME = process.env.SECRET_NAME;
 const REDIRECT_URI = process.env.REDIRECT_URI;
-console.log(`[VERBOSE] CLIENT_ID: ${CLIENT_ID}`);
-console.log(`[VERBOSE] SECRET_NAME: ${SECRET_NAME}`);
-console.log(`[VERBOSE] REDIRECT_URI: ${REDIRECT_URI}`);
 
 // Fail fast if required environment variables are missing
 if (!CLIENT_ID || !SECRET_NAME || !REDIRECT_URI) {
-  console.error(
-    "[VERBOSE] Missing required environment variables. Throwing error."
-  );
   throw new Error(
     "Missing required environment variables: CLIENT_ID, SECRET_NAME, and REDIRECT_URI must be set."
   );
 }
-console.log("[VERBOSE] Environment variables check passed.");
-
-console.log("[VERBOSE] Hello, we're starting!");
-
 // --- Configuration for local storage (used in instructions) ---
 const KEYCHAIN_SERVICE_NAME = "gemini-cli-cep-oauth";
 const KEYCHAIN_ACCOUNT_NAME = "main-account";
-console.log("[VERBOSE] Keychain constants set.");
 // --- END CONFIGURATION ---
 
 // Initialize the Secret Manager client
-console.log("[VERBOSE] Initializing SecretManagerServiceClient...");
 const secretClient = new SecretManagerServiceClient();
-console.log("[VERBOSE] SecretManagerServiceClient initialized.");
 
 /**
  * Helper function to access a secret from Secret Manager.
  */
 async function getClientSecret() {
-  console.log("[VERBOSE] getClientSecret: Start");
   try {
-    console.log(
-      `[VERBOSE] getClientSecret: Accessing secret version: ${SECRET_NAME}`
-    );
     const [version] = await secretClient.accessSecretVersion({
       name: SECRET_NAME,
     });
-    console.log("[VERBOSE] getClientSecret: Secret version accessed.");
     const payload = version.payload.data.toString("utf8");
-    console.log("[VERBOSE] getClientSecret: Secret payload decoded.");
-    console.log("[VERBOSE] getClientSecret: Success");
+
     return payload;
   } catch (error) {
-    console.error(
-      "[VERBOSE] getClientSecret: Failed to access secret version:",
-      error
-    );
+    console.error("Failed to access secret version:", error);
     throw new Error("Could not retrieve client secret.", { cause: error });
   }
 }
@@ -112,90 +52,60 @@ async function getClientSecret() {
  * @param {Object} res Express response object.
  */
 async function handleCallback(req, res) {
-  console.log("[VERBOSE] handleCallback: Start");
   const code = req.query.code;
-  const state = req.query.state;
-  console.log(`[VERBOSE] handleCallback: Code: ${code}, State: ${state}`);
+  const state = req.query.state; // The state is the base64 encoded local redirect URI
 
   if (!code) {
-    console.error(
-      "[VERBOSE] handleCallback: Missing authorization code in request query parameters."
-    );
+    console.error("Missing authorization code in request query parameters.");
     return res.status(400).send("Error: Missing authorization code.");
   }
 
   try {
-    console.log("[VERBOSE] handleCallback: Getting client secret...");
     const clientSecret = await getClientSecret();
-    console.log("[VERBOSE] handleCallback: Client secret retrieved.");
-
-    const tokenRequestPayload = {
-      client_id: CLIENT_ID,
-      client_secret: clientSecret,
-      code: code,
-      grant_type: "authorization_code",
-      redirect_uri: REDIRECT_URI,
-    };
-    console.log(
-      "[VERBOSE] handleCallback: Token exchange payload:",
-      tokenRequestPayload
-    );
-
-    console.log("[VERBOSE] handleCallback: Performing token exchange...");
     const tokenResponse = await axios.post(
       "https://oauth2.googleapis.com/token",
-      tokenRequestPayload
-    );
-    console.log(
-      "[VERBOSE] handleCallback: Token exchange successful:",
-      tokenResponse.data
+      {
+        client_id: CLIENT_ID,
+        client_secret: clientSecret,
+        code: code,
+        grant_type: "authorization_code",
+        redirect_uri: REDIRECT_URI,
+      }
     );
 
     const { access_token, refresh_token, expires_in, scope, token_type } =
       tokenResponse.data;
 
+    // Calculate expiry_date (timestamp in milliseconds)
     const expiry_date = Date.now() + expires_in * 1000;
-    console.log(
-      `[VERBOSE] handleCallback: Expiry date calculated: ${expiry_date}`
-    );
 
+    // If state is present, decode it and decide whether to redirect or show manual page.
     if (state) {
-      console.log("[VERBOSE] handleCallback: State parameter present.");
       try {
+        // SECURITY: Enforce a reasonable size limit on the state parameter to prevent DoS.
         if (state.length > 4096) {
-          console.error("[VERBOSE] handleCallback: State parameter too large.");
           throw new Error("State parameter exceeds size limit of 4KB.");
         }
 
-        console.log("[VERBOSE] handleCallback: Decoding state parameter...");
         const payload = JSON.parse(
           Buffer.from(state, "base64").toString("utf8")
         );
-        console.log("[VERBOSE] handleCallback: State payload:", payload);
 
+        // If not in manual mode and a URI is present, perform the redirect.
         if (payload && payload.manual === false && payload.uri) {
-          console.log(
-            "[VERBOSE] handleCallback: Manual mode is false, redirect URI present."
-          );
           const redirectUrl = new URL(payload.uri);
-          console.log(
-            `[VERBOSE] handleCallback: Parsed redirect URL: ${redirectUrl}`
-          );
 
+          // SECURITY: Validate the redirect URI to prevent open redirect attacks.
           if (
             redirectUrl.hostname !== "localhost" &&
             redirectUrl.hostname !== "127.0.0.1"
           ) {
-            console.error(
-              `[VERBOSE] handleCallback: Invalid redirect hostname: ${redirectUrl.hostname}`
-            );
             throw new Error(
               `Invalid redirect hostname: ${redirectUrl.hostname}. Must be localhost or 127.0.0.1.`
             );
           }
-          console.log("[VERBOSE] handleCallback: Redirect hostname validated.");
 
-          const finalUrl = redirectUrl;
+          const finalUrl = redirectUrl; // Use the validated URL object
           finalUrl.searchParams.append("access_token", access_token);
           if (refresh_token) {
             finalUrl.searchParams.append("refresh_token", refresh_token);
@@ -204,35 +114,23 @@ async function handleCallback(req, res) {
           finalUrl.searchParams.append("token_type", token_type);
           finalUrl.searchParams.append("expiry_date", expiry_date.toString());
 
+          // SECURITY: Pass the CSRF token back to the client for validation.
           if (payload.csrf) {
             finalUrl.searchParams.append("state", payload.csrf);
-            console.log(
-              "[VERBOSE] handleCallback: Appended CSRF token to final URL."
-            );
           }
 
-          console.log(
-            `[VERBOSE] handleCallback: Redirecting to: ${finalUrl.toString()}`
-          );
           return res.redirect(302, finalUrl.toString());
-        } else {
-          console.log(
-            "[VERBOSE] handleCallback: Not redirecting, manual mode or no URI."
-          );
         }
       } catch (e) {
         console.error(
-          "[VERBOSE] handleCallback: Error processing state or redirect. Falling back to manual page.",
+          "Error processing state or redirect. Falling back to manual page.",
           e
         );
       }
-    } else {
-      console.log("[VERBOSE] handleCallback: No state parameter present.");
     }
 
-    console.log(
-      "[VERBOSE] handleCallback: Falling back to manual instructions page."
-    );
+    // --- Fallback to manual instructions ---
+
     const credentialsJson = JSON.stringify(
       {
         refresh_token: refresh_token,
@@ -243,34 +141,125 @@ async function handleCallback(req, res) {
       },
       null,
       2
-    );
+    ); // Pretty print JSON
 
+    // 4. Display the JSON and add a copy button + instructions
     res.set("Content-Type", "text/html");
-    console.log("[VERBOSE] handleCallback: Sending HTML response.");
     res.status(200).send(`
       <html>
-        <head><title>OAuth Token Generated</title></head>
+        <head>
+          <title>OAuth Token Generated</title>
+          <style>
+            body { font-family: sans-serif; display: grid; place-items: center; min-height: 90vh; background-color: #f4f7f6; padding: 1rem;}
+            .container { background: #fff; border: 1px solid #ccc; border-radius: 8px; padding: 2rem; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 90%; width: 600px; }
+            h1 { color: #333; margin-top: 0;}
+            h3 { margin-top: 1.5rem; margin-bottom: 0.5rem; }
+            textarea {
+              width: 100%;
+              min-height: 150px;
+              padding: 0.5rem;
+              border: 1px solid #ccc;
+              border-radius: 4px;
+              font-family: monospace;
+              white-space: pre;
+              word-break: break-all;
+              box-sizing: border-box; /* Include padding and border in the element's total width and height */
+            }
+            button {
+              display: block;
+              margin: 1rem auto 1rem 0; /* Align left */
+              padding: 0.75rem 1.5rem;
+              font-size: 1rem;
+              border-radius: 4px;
+              border: none;
+              background-color: #4285F4;
+              color: white;
+              cursor: pointer;
+              transition: background-color 0.2s;
+            }
+            button:hover { background-color: #357ae8; }
+            button:active { background-color: #2a65d5; }
+            #copy-status { font-style: italic; color: green; margin-left: 10px; opacity: 0; transition: opacity 0.5s;}
+            .instructions { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #eee; font-size: 0.9em; }
+            code { background-color: #eee; padding: 0.2em 0.4em; border-radius: 3px; }
+          </style>
+        </head>
         <body>
-          <h1>Success! Credentials Ready</h1>
-          <textarea id="credentials-json" readonly>${credentialsJson}</textarea>
-          <script>function copyCredentials() { /* ... */ }</script>
+          <div class="container">
+            <h1>Success! Credentials Ready</h1>
+            <p>Copy the JSON block below. You'll need to store this as the password/secret in your operating system's keychain.</p>
+
+            <h3>Credentials JSON</h3>
+            <textarea id="credentials-json" readonly>${credentialsJson}</textarea>
+            <button onclick="copyCredentials()">Copy JSON</button>
+            <span id="copy-status">Copied!</span>
+
+            <div class="instructions">
+              <h4>Keychain Storage Instructions:</h4>
+              <ol>
+                <li>Open your OS Keychain/Credential Manager.</li>
+                <li>Create a new secure entry (e.g., a "Generic Password" on macOS, a "Windows Credential", or similar on Linux).</li>
+                <li>Set the **Service** (or equivalent field) to: <code>${KEYCHAIN_SERVICE_NAME}</code></li>
+                <li>Set the **Account** (or username field) to: <code>${KEYCHAIN_ACCOUNT_NAME}</code></li>
+                <li>Paste the copied JSON into the **Password/Secret** field.</li>
+                <li>Save the entry.</li>
+              </ol>
+              <p>Your local MCP server will now be able to find and use these credentials automatically.</p>
+              <p><small>(If keychain is unavailable, the server falls back to an encrypted file, but keychain is recommended.)</small></p>
+            </div>
+          </div>
+
+          <script>
+            function copyCredentials() {
+              const textArea = document.getElementById('credentials-json');
+              const status = document.getElementById('copy-status');
+
+              // Use modern Clipboard API if available, with fallback to execCommand
+              if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(textArea.value).then(() => {
+                  status.textContent = 'Copied!';
+                  status.style.color = 'green';
+                }, () => {
+                  status.textContent = 'Copy failed!';
+                  status.style.color = 'red';
+                });
+              } else {
+                // Fallback for older browsers/iframes without clipboard access
+                textArea.select();
+                try {
+                  const successful = document.execCommand('copy');
+                  if (successful) {
+                    status.textContent = 'Copied!';
+                    status.style.color = 'green';
+                  } else {
+                    status.textContent = 'Copy failed!';
+                    status.style.color = 'red';
+                  }
+                } catch (err) {
+                  status.textContent = 'Copy failed!';
+                  status.style.color = 'red';
+                  console.error('Fallback copy failed: ', err);
+                }
+              }
+
+              status.style.opacity = 1;
+              setTimeout(() => { status.style.opacity = 0; }, 2000);
+
+              // Deselect text after attempting to copy
+              if (window.getSelection) {window.getSelection().removeAllRanges();}
+              else if (document.selection) {document.selection.empty();}
+            }
+          </script>
         </body>
       </html>
-    `); // HTML minified for brevity in log
+    `);
   } catch (error) {
-    console.error(
-      "[VERBOSE] handleCallback: Error during token exchange process."
-    );
     if (axios.isAxiosError(error) && error.response) {
-      console.error(
-        "[VERBOSE] handleCallback: Axios error:",
-        error.response.data
-      );
+      console.error("Error during token exchange:", error.response.data);
     } else {
       console.error(
-        "[VERBOSE] handleCallback: Generic error:",
-        error instanceof Error ? error.message : error,
-        error
+        "Error during token exchange:",
+        error instanceof Error ? error.message : error
       );
     }
     res
@@ -279,67 +268,51 @@ async function handleCallback(req, res) {
         "An error occurred during the token exchange. Check function logs for details."
       );
   }
-  console.log("[VERBOSE] handleCallback: End");
 }
 
 /**
  * Handles token refresh.
+ * Accepts a refresh_token and returns a new access_token.
+ * @param {Object} req Express request object.
+ * @param {Object} res Express response object.
  */
 async function handleRefreshToken(req, res) {
-  console.log("[VERBOSE] handleRefreshToken: Start");
+  // Only accept POST requests
   if (req.method !== "POST") {
-    console.error(
-      `[VERBOSE] handleRefreshToken: Invalid method: ${req.method}`
-    );
+    console.error("Invalid method for refreshToken:", req.method);
     return res.status(405).send("Method Not Allowed");
   }
 
   const { refresh_token } = req.body;
-  console.log(
-    `[VERBOSE] handleRefreshToken: Refresh token present: ${!!refresh_token}`
-  );
 
   if (!refresh_token) {
-    console.error(
-      "[VERBOSE] handleRefreshToken: Missing refresh_token in request body"
-    );
+    console.error("Missing refresh_token in request body");
     return res
       .status(400)
       .send("Error: Missing refresh_token in request body.");
   }
 
   try {
-    console.log("[VERBOSE] handleRefreshToken: Getting client secret...");
     const clientSecret = await getClientSecret();
-    console.log("[VERBOSE] handleRefreshToken: Client secret retrieved.");
 
-    const refreshRequestPayload = {
-      client_id: CLIENT_ID,
-      client_secret: clientSecret,
-      refresh_token: refresh_token,
-      grant_type: "refresh_token",
-    };
-    console.log(
-      "[VERBOSE] handleRefreshToken: Refresh token payload:",
-      refreshRequestPayload
-    );
-
-    console.log("[VERBOSE] handleRefreshToken: Performing token refresh...");
     const tokenResponse = await axios.post(
       "https://oauth2.googleapis.com/token",
-      refreshRequestPayload
-    );
-    console.log(
-      "[VERBOSE] handleRefreshToken: Token refresh successful:",
-      tokenResponse.data
+      {
+        client_id: CLIENT_ID,
+        client_secret: clientSecret,
+        refresh_token: refresh_token,
+        grant_type: "refresh_token",
+      }
     );
 
     const { access_token, expires_in, scope, token_type } = tokenResponse.data;
-    const expiry_date = Date.now() + expires_in * 1000;
-    console.log(
-      `[VERBOSE] handleRefreshToken: New expiry date: ${expiry_date}`
-    );
 
+    // Calculate expiry_date (timestamp in milliseconds)
+    const expiry_date = Date.now() + expires_in * 1000;
+
+    // Return the new credentials
+    // Note: Google does NOT return a new refresh_token on refresh
+    // The client must preserve the original refresh_token
     res.status(200).json({
       access_token,
       expiry_date,
@@ -347,72 +320,41 @@ async function handleRefreshToken(req, res) {
       scope,
     });
   } catch (error) {
-    console.error("[VERBOSE] handleRefreshToken: Error during token refresh.");
     if (axios.isAxiosError(error) && error.response) {
-      console.error(
-        "[VERBOSE] handleRefreshToken: Axios error:",
-        error.response.data
-      );
+      console.error("Error during token refresh:", error.response.data);
       res.status(error.response.status).json(error.response.data);
     } else {
       console.error(
-        "[VERBOSE] handleRefreshToken: Generic error:",
-        error instanceof Error ? error.message : error,
-        error
+        "Error during token refresh:",
+        error instanceof Error ? error.message : error
       );
       res.status(500).send("An error occurred during token refresh.");
     }
   }
-  console.log("[VERBOSE] handleRefreshToken: End");
 }
 
 /**
  * Main entry point for the Cloud Function.
+ * Routes requests to either the callback handler or the refresh handler.
  */
-console.log("[VERBOSE] Registering HTTP function 'oauthHandler'...");
-try {
-  functions.http("oauthHandler", async (req, res) => {
-    console.log(
-      `[VERBOSE] oauthHandler: Received request: ${req.method} ${req.path}`
+functions.http("oauthHandler", async (req, res) => {
+  // Route to refresh handler if path ends with /refresh or /refreshToken or it's a POST with refresh_token
+  if (
+    ["/refresh", "/refreshToken"].includes(req.path) ||
+    (req.method === "POST" && req.body?.refresh_token)
+  ) {
+    return handleRefreshToken(req, res);
+  }
+
+  // Route to callback handler if path ends with /callback or /oauth2callback or has 'code' query param
+  if (["/callback", "/oauth2callback"].includes(req.path) || req.query.code) {
+    return handleCallback(req, res);
+  }
+
+  // Default/Error case
+  res
+    .status(400)
+    .send(
+      "Unknown request type. Expected OAuth callback or token refresh request."
     );
-    if (
-      ["/refresh", "/refreshToken"].includes(req.path) ||
-      (req.method === "POST" && req.body?.refresh_token)
-    ) {
-      console.log("[VERBOSE] oauthHandler: Routing to handleRefreshToken.");
-      return handleRefreshToken(req, res);
-    }
-
-    if (["/callback", "/oauth2callback"].includes(req.path) || req.query.code) {
-      console.log("[VERBOSE] oauthHandler: Routing to handleCallback.");
-      return handleCallback(req, res);
-    }
-
-    console.error(
-      `[VERBOSE] oauthHandler: Unknown request type for path: ${req.path}`
-    );
-    res
-      .status(400)
-      .send(
-        "Unknown request type. Expected OAuth callback or token refresh request."
-      );
-  });
-  console.log(
-    "[VERBOSE] functions.http('oauthHandler') registration call complete."
-  );
-} catch (e) {
-  console.error(
-    "[VERBOSE] CRITICAL: Error during functions.http registration:",
-    e
-  );
-  process.exit(1);
-}
-
-console.log(
-  "[VERBOSE] End of top-level script. Functions Framework should now be in control."
-);
-
-// Optional: Add a keep-alive timer to see if the process is being killed externally
-// setTimeout(() => {
-//   console.log("[VERBOSE] Keep-alive: Still running after 30 seconds...");
-// }, 30000);
+});
