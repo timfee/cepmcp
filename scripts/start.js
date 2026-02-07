@@ -4,16 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { SpawnOptions } from "node:child_process";
-
 import { spawn } from "node:child_process";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 
-function runCommand(
-  command: string,
-  args: string[],
-  options: SpawnOptions
-): Promise<void> {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+function runCommand(command, args, options) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, options);
 
