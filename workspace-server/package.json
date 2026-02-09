@@ -1,0 +1,19 @@
+{
+  "name": "cep-mcp-server",
+  "version": "0.9.0",
+  "description": "Chrome Enterprise Premium MCP Server",
+  "keywords": ["mcp", "google-workspace", "chrome-enterprise-premium", "oauth"],
+  "license": "Apache-2.0",
+  "author": "Tim Feeley",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "clean": "rm -rf dist node_modules",
+    "build": "tsx esbuild.config.ts",
+    "build:auth-utils": "tsx esbuild.auth-utils.ts"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.2"
+  }
+}

@@ -1,0 +1,4 @@
+description = "Start a CEP troubleshooting session"
+prompt = """
+Authenticate the user.
+"""

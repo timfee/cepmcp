@@ -1,0 +1,62 @@
+{
+  "name": "cepmcp",
+  "version": "0.9.0",
+  "description": "Chrome Enterprise Premium MCP Server for Google Workspace integration",
+  "private": true,
+  "author": "Tim Feeley",
+  "license": "Apache-2.0",
+  "workspaces": [
+    "workspace-server"
+  ],
+  "type": "module",
+  "module": "index.ts",
+  "scripts": {
+    "prepare": "npm run build",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:watch": "npm run test:watch --workspaces --if-present",
+    "test:coverage": "npm run test:coverage --workspaces --if-present",
+    "test:ci": "npm run test:ci --workspaces --if-present",
+    "start": "npm run start --workspaces --if-present",
+    "auth-utils": "npm run build:auth-utils --filter workspace-server && tsx scripts/auth-utils.ts",
+    "clean": "npm run clean --workspaces --if-present && rm -rf release node_modules logs docs/.vitepress/cache docs/.vitepress/dist",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format:check": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "release": "tsx scripts/release.ts",
+    "release:dev": "npm install && npm run build && tsx scripts/release.ts",
+    "set-version": "tsx scripts/set-version.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "cors": "^2.8.6",
+    "dompurify": "^3.3.1",
+    "dotenv": "^17.2.4",
+    "express": "^5.2.1",
+    "google-auth-library": "^10.5.0",
+    "googleapis": "^171.2.0",
+    "jsdom": "^28.0.0",
+    "keytar": "^7.9.0",
+    "ts-node": "^10.9.2",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/archiver": "^7.0.0",
+    "@types/cors": "^2.8.19",
+    "@types/dompurify": "^3.2.0",
+    "@types/express": "^5.0.6",
+    "@types/minimist": "^1.2.5",
+    "@types/node": "^25.2.1",
+    "@vercel/ncc": "^0.38.3",
+    "archiver": "^7.0.1",
+    "minimist": "^1.2.8",
+    "oxfmt": "^0.28.0",
+    "oxlint": "^1.43.0",
+    "tsx": "^4.21.0",
+    "ultracite": "7.1.4"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
